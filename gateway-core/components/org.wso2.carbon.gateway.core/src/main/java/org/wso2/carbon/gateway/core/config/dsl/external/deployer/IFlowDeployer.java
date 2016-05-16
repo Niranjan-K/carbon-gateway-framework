@@ -51,7 +51,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A class responsible for read the .iflow files and deploy them to the runtime Object model.
+ * A class responsible for read the .iflow files and deployment them to the runtime Object model.
  */
 @Component(
         name = "org.wso2.carbon.gateway.core.config.dsl.external.deployer.IFlowDeployer",

@@ -112,6 +112,16 @@
                 <type>zip</type>
             </dependency>
             <dependency>
+                <groupId>org.wso2.carbon.gateway</groupId>
+                <artifactId>org.wso2.carbon.gateway.api</artifactId>
+                <version>${carbon.gw.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.gateway</groupId>
+                <artifactId>org.wso2.carbon.gateway.api.feature</artifactId>
+                <version>${carbon.gw.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.osgi</groupId>
                 <artifactId>org.osgi.core</artifactId>
                 <version>${osgi.api.version}</version>
@@ -150,6 +160,11 @@
                 <groupId>org.wso2.carbon</groupId>
                 <artifactId>org.wso2.carbon.core</artifactId>
                 <version>${carbon.kernel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.msf4j</groupId>
+                <artifactId>msf4j-core</artifactId>
+                <version>${carbon.msf4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>junit</groupId>
@@ -260,6 +275,19 @@
         <slf4j.logging.package.import.version.range>[1.7.1, 2.0.0)
         </slf4j.logging.package.import.version.range>
 
+        <!-- MSF4J -->
+        <carbon.msf4j.version>1.1.0-SNAPSHOT</carbon.msf4j.version>
+        <carbon.msf4j.impl.version.range>[1.1.0,2)</carbon.msf4j.impl.version.range>
+        <gson.version>2.2.4</gson.version>
+        <gson.version.range>[2.2,3)</gson.version.range>
+        <guava.version>18.0</guava.version>
+        <guava.version.range>[18.0,19.0)</guava.version.range>
+        <rs-api.version>2.0</rs-api.version>
+        <beanutils.version>1.8.3_2</beanutils.version>
+        <beanutils.version.range>[1.8,2)</beanutils.version.range>
+        <beanutils.osgi.version>1.8.3.2</beanutils.osgi.version>
+        <!-- END MSF4J -->
+
         <carbon.transport.version>2.0.2</carbon.transport.version>
         <carbon.transport.package.import.version.range>[2.0.0, 2.1.0)
         </carbon.transport.package.import.version.range>
@@ -287,5 +315,6 @@
         <module>mediators</module>
         <module>archetypes</module>
         <module>type-converters</module>
+        <module>admin-api</module>
     </modules>
 </project>

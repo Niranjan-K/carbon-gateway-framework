@@ -1,0 +1,35 @@
+@startuml
+
+participant chainingInbound : InboundEndpoint(protocol("http"),port("8290"),context("/stocks"))
+
+participant serviceOnePipeline : Pipeline("Service_One_Pipeline")
+
+participant serviceTwoPipeline : Pipeline("Service_Two_Pipeline")
+
+participant ServiceOne : OutboundEndpoint(protocol("http"),host("http://localhost:8080/service1"))
+
+participant ServiceTwo : OutboundEndpoint(protocol("http"),host("http://localhost:8081/service2"))
+
+group name="chaining", path="/invoke", method="GET"
+
+    chainingInbound -> serviceOnePipeline : "client Request to Service One Pipeline"
+
+    serviceOnePipeline::log("Request Received into Service One Pipeline")
+
+    serviceOnePipeline -> ServiceOne : "Request to Service One"
+
+    ServiceOne -> serviceOnePipeline : "Response from Service One"
+
+    serviceOnePipeline::log("Service One has been invoked")
+
+    serviceOnePipeline -> ServiceTwo : "Request to Service Two"
+
+    ServiceTwo -> serviceOnePipeline : "Response from Service Two"
+
+    serviceOnePipeline::log("Service two has been invoked")
+
+    serviceOnePipeline -> chainingInbound : "Chained Response"
+
+end
+
+@enduml
