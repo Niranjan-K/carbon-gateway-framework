@@ -79,6 +79,10 @@
             <artifactId>antlr4-runtime</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.damnhandy.wso2</groupId>
+            <artifactId>handy-uri-templates</artifactId>
+        </dependency>
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
@@ -98,7 +102,8 @@
     <properties>
         <maven.findbugsplugin.version.exclude>findbugs-exclude.xml</maven.findbugsplugin.version.exclude>
         <export.package>
-            org.wso2.carbon.gateway.core.*;version="${carbon.gw.package.export.version}"
+            org.wso2.carbon.gateway.core.*;version="${carbon.gw.package.export.version}",
+            com.damnhandy.uri.template.*;version="${dh.uri.template}"
         </export.package>
         <import.package>
             org.osgi.framework.*;version="${osgi.framework.import.version.range}",
