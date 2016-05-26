@@ -152,6 +152,11 @@
                 <version>${carbon.kernel.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.damnhandy.wso2</groupId>
+                <artifactId>handy-uri-templates</artifactId>
+                <version>${dh.uri.template}</version>
+            </dependency>
+            <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${junit.version}</version>
@@ -275,6 +280,7 @@
         <carbon.p2.plugin.version>1.5.4</carbon.p2.plugin.version>
         <carbon.feature.plugin.version>2.0.0</carbon.feature.plugin.version>
 
+        <dh.uri.template>1.1.7.wso2v1</dh.uri.template>
         <antlr4.runtime.version>4.5.1.wso2v1</antlr4.runtime.version>
         <plugin.version.antlr>4.5.1</plugin.version.antlr>
         <junit.version>4.8.2</junit.version>

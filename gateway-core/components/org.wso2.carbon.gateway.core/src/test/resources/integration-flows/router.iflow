@@ -2,30 +2,42 @@
 
 participant StocksInbound : InboundEndpoint(protocol("http"),port("8290"),context("/stocks"))
 
-participant StocksPipeline : Pipeline("Stocks_Flow")
+participant NYSEPipeline : Pipeline("New_York_Stock_Exchange_Flow")
+
+participant NASDAQPipeline : Pipeline("NASDAQ_Message_Flow")
+
+participant TESTPipeline : Pipeline("Test_Pipeline")
+participant TESTPipeline2 : Pipeline("Test_Pipeline2")
 
 participant NYSEOutbound : OutboundEndpoint(protocol("http"),host("http://localhost:8080/stockquote/all"))
 
 participant NASDAQOutbound : OutboundEndpoint(protocol("http"),host("http://localhost:8081/stockquote/all"))
 
-StocksInbound -> StocksPipeline : "client request"
-
-StocksPipeline::log("Before filter statement")
-
-if with condition(source("$header.exchange"),pattern("nyse"))
-    StocksPipeline::log("Filter condition is true")
-    StocksPipeline -> NYSEOutbound : "Request to New York Stock Exchange"
-    NYSEOutbound -> StocksPipeline : "StockQuotes from New York Stock Exchange"
-
-else
-    StocksPipeline::log("Filter condition is false")
-    StocksPipeline -> NASDAQOutbound : "Request to NASDAQ"
-    NASDAQOutbound -> StocksPipeline : "StockQuotes from NASDAQ"
+group name="nyse", path="/nyse/{symbol}", method="GET"
+    StocksInbound -> NYSEPipeline : "client request"
+    NYSEPipeline::log("This is NYSE group")
+    NYSEPipeline::log("Symbol is")
+    NYSEPipeline::log("$symbol")
+    NYSEPipeline -> TESTPipeline
+    TESTPipeline::log("Test pipeline, Symbol is")
+    TESTPipeline::log("$symbol")
+    TESTPipeline -> TESTPipeline2
+    TESTPipeline2::log("In test pipeline 2")
+    TESTPipeline2 -> NYSEPipeline
+    TESTPipeline::log("Back in test pipeline")
+    TESTPipeline -> NYSEPipeline
+    NYSEPipeline::log("Back to NYSEPipeline")
+    NYSEPipeline -> NYSEOutbound : "Request to New York Stock Exchange"
+    NYSEOutbound -> NYSEPipeline : "StockQuotes from New York Stock Exchange"
+    NYSEPipeline -> StocksInbound : "Final Response"
 end
 
-StocksPipeline::log("After filter statement")
-
-StocksPipeline -> StocksInbound : "Final Response"
-
+group name="nasdaq", path="/nasdaq", method="GET"
+    StocksInbound -> NASDAQPipeline : "client request"
+    NASDAQPipeline::log("This is NASDAQ group")
+    NASDAQPipeline -> NASDAQOutbound : "Request to NASDAQ"
+    NASDAQOutbound -> NASDAQPipeline : "StockQuotes from NASDAQ"
+    NASDAQPipeline -> StocksInbound : "Final Response"
+end
 
 @enduml

@@ -27,6 +27,8 @@ public class Constants {
 
     public static final String VARIABLE_STACK = "VARIABLE_STACK";
 
+    public static final String PIPELINE_POSITION = "PIPELINE_POSITION";
+
     /**
      * Enumeration of supported types.
      */

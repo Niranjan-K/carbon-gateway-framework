@@ -31,6 +31,7 @@ import org.wso2.carbon.gateway.core.flow.Pipeline;
 import org.wso2.carbon.gateway.core.flow.mediators.builtin.flowcontrollers.filter.Condition;
 import org.wso2.carbon.gateway.core.flow.mediators.builtin.flowcontrollers.filter.FilterMediator;
 import org.wso2.carbon.gateway.core.flow.mediators.builtin.flowcontrollers.filter.Source;
+import org.wso2.carbon.gateway.core.flow.mediators.builtin.flowcontrollers.pipeline.PipelineMediator;
 import org.wso2.carbon.gateway.core.inbound.InboundEPProviderRegistry;
 import org.wso2.carbon.gateway.core.inbound.InboundEndpoint;
 import org.wso2.carbon.gateway.core.outbound.OutboundEPProviderRegistry;
@@ -50,23 +51,25 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
 
     public static final String INBOUND = "INBOUND";
     public static final String OUTBOUND = "OUTBOUND";
+    public static final String PIPELINE = "PIPELINE";
+    public static final String ROOTENV = "ROOTENV";
+
     private static final String DOUBLECOLON = "::";
     WUMLConfigurationBuilder.IntegrationFlow integrationFlow;
-    Stack<String> pipelineStack = new Stack<String>();
-    Stack<FilterMediator> filterMediatorStack = new Stack<FilterMediator>();
-    boolean ifMultiThenBlockStarted = false;
-    boolean ifElseBlockStarted = false;
     Map<String, String> identifierTypeMap = new HashMap<>();
 
-    boolean insideGroup = false;
-    private String groupPath;
+    private Stack<String> pipelineStack = new Stack<>();
+    private Map<String, Environment> pipelineEnv = new HashMap<>();
+    private String currentPipeline = ROOTENV;
 
     public WUMLBaseListenerImpl() {
-        this.integrationFlow = new WUMLConfigurationBuilder.IntegrationFlow("default");
+        this.integrationFlow = WUMLConfigurationBuilder.getDefultIntegrationFlow();
+        pipelineEnv.put(ROOTENV, new Environment());
     }
 
     public WUMLBaseListenerImpl(WUMLConfigurationBuilder.IntegrationFlow integrationFlow) {
         this.integrationFlow = integrationFlow;
+        pipelineEnv.put(ROOTENV, new Environment());
     }
 
     public WUMLConfigurationBuilder.IntegrationFlow getIntegrationFlow() {
@@ -76,6 +79,10 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     @Override
     public void exitScript(WUMLParser.ScriptContext ctx) {
         super.exitScript(ctx);
+    }
+
+    private Environment getEnv(String currentPipelie) {
+        return pipelineEnv.get(currentPipelie);
     }
 
     @Override
@@ -93,7 +100,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         parameterHolder.addParameter(new Parameter("assignment", "false"));
         mediator.setParameters(parameterHolder);
 
-        if (pipelineStack.size() == 0) {
+        if (getEnv(currentPipeline).getPipelineStack().size() == 0) {
             // ignore, we only accept constants at highest level of mediation flow and these should not be updateable.
             //integrationFlow.getGWConfigHolder().addGlobalConstant(varType, varIdentifier, varValue);
         } else {
@@ -115,7 +122,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         parameterHolder.addParameter(new Parameter("assignment", "true"));
         mediator.setParameters(parameterHolder);
 
-        if (pipelineStack.size() == 0) {
+        if (getEnv(currentPipeline).getPipelineStack().size() == 0) {
             // Only constant declarations allowed at the highest level.
             //integrationFlow.getGWConfigHolder().updateGlobalConstant(varIdentifier, varValue);
         } else {
@@ -137,7 +144,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
             constValue = StringParserUtil.getValueWithinDoubleQuotes(ctx.COMMENTSTRINGX().getText());
         }
 
-        if (pipelineStack.size() == 0) {
+        if (getEnv(currentPipeline).getPipelineStack().size() == 0) {
             integrationFlow.getGWConfigHolder().addGlobalConstant(
                     VariableUtil.getType(constType), constIdentifier, constValue);
         } // constants only allowed at the highest level
@@ -207,9 +214,8 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     @Override
     public void exitPipelineDefStatement(WUMLParser.PipelineDefStatementContext ctx) {
         String pipeId = getValue(ctx.IDENTIFIER().getText()).toString();
-
-        Pipeline pipeline = new Pipeline(pipeId);
-        integrationFlow.getGWConfigHolder().addPipeline(pipeline);
+        identifierTypeMap.put(pipeId, PIPELINE);
+        integrationFlow.getGWConfigHolder().addPipeline(new Pipeline(pipeId));
         super.exitPipelineDefStatement(ctx);
     }
 
@@ -269,6 +275,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         String mediatorDefinition = ctx.MEDIATORDEFINITIONX().getText();
         String mediatorName = mediatorDefinition.split(DOUBLECOLON)[1];
 
+        String pipeline = ctx.MEDIATORDEFINITIONX().getText().split("::")[0];
         String configurations = StringParserUtil.getValueWithinDoubleQuotes(ctx.ARGUMENTLISTDEF().getText());
         Mediator mediator = MediatorProviderRegistry.getInstance().getMediator(mediatorName);
 
@@ -277,6 +284,11 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         mediator.setParameters(parameterHolder);
 
         // mediator.setParameters(configurations);
+        currentPipeline = pipeline;
+        if (getEnv(currentPipeline) == null) {
+            pipelineEnv.put(currentPipeline, new Environment());
+            getEnv(currentPipeline).getPipelineStack().push(currentPipeline);
+        }
         dropMediatorFilterAware(mediator);
         super.exitMediatorStatementDef(ctx);
     }
@@ -309,10 +321,10 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     @Override
     public void exitIfStatement(WUMLParser.IfStatementContext ctx) {
         //ctx.expression().EXPRESSIONX()
-        ifMultiThenBlockStarted = false;
-        ifElseBlockStarted = false;
-        if (!filterMediatorStack.isEmpty()) {
-            filterMediatorStack.pop();
+        getEnv(currentPipeline).setIfMultiThenBlockStarted(false);
+        getEnv(currentPipeline).setIfElseBlockStarted(false);
+        if (!getEnv(currentPipeline).getFilterMediatorStack().isEmpty()) {
+            getEnv(currentPipeline).getFilterMediatorStack().pop();
         }
         super.exitIfStatement(ctx);
     }
@@ -336,33 +348,34 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         Condition condition = new Condition(source, Pattern.compile(conditionValue));
 
         FilterMediator filterMediator = new FilterMediator(condition);
-        integrationFlow.getGWConfigHolder().getPipeline(pipelineStack.peek()).addMediator(filterMediator);
-        filterMediatorStack.push(filterMediator);
+        filterMediator.setPipeline(getIntegrationFlow().getGWConfigHolder().getPipeline(getEnv(currentPipeline).getPipelineStack().peek()));
+        integrationFlow.getGWConfigHolder().getPipeline(getEnv(currentPipeline).getPipelineStack().peek()).addMediator(filterMediator);
+        getEnv(currentPipeline).getFilterMediatorStack().push(filterMediator);
         super.exitConditionStatement(ctx);
     }
 
     @Override
     public void enterIfMultiThenBlock(WUMLParser.IfMultiThenBlockContext ctx) {
-        ifMultiThenBlockStarted = true;
+        getEnv(currentPipeline).setIfMultiThenBlockStarted(true);
         super.enterIfMultiThenBlock(ctx);
     }
 
     @Override
     public void enterIfElseBlock(WUMLParser.IfElseBlockContext ctx) {
-        ifMultiThenBlockStarted = false;
-        ifElseBlockStarted = true;
+        getEnv(currentPipeline).setIfMultiThenBlockStarted(false);
+        getEnv(currentPipeline).setIfElseBlockStarted(true);
         super.enterIfElseBlock(ctx);
     }
 
     @Override
     public void exitIfMultiThenBlock(WUMLParser.IfMultiThenBlockContext ctx) {
-        ifMultiThenBlockStarted = false;
+        getEnv(currentPipeline).setIfMultiThenBlockStarted(false);
         super.exitIfMultiThenBlock(ctx);
     }
 
     @Override
     public void exitIfElseBlock(WUMLParser.IfElseBlockContext ctx) {
-        ifElseBlockStarted = false;
+        getEnv(currentPipeline).setIfElseBlockStarted(false);
         super.exitIfElseBlock(ctx);
     }
 
@@ -373,7 +386,9 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
 
     @Override
     public void exitRefStatement(WUMLParser.RefStatementContext ctx) {
+        getEnv(currentPipeline).getPipelineStack().push(ctx.IDENTIFIER().getText());
         pipelineStack.push(ctx.IDENTIFIER().getText());
+
         super.exitRefStatement(ctx);
     }
 
@@ -389,7 +404,9 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
         String identifierType;
 
         String firstType = identifierTypeMap.get(firstIdentifier);
-        if (firstType != null) {
+        String secondType = identifierTypeMap.get(secondIdentifier);
+
+        if (firstType != null && firstType != PIPELINE) {
             if (INBOUND.equals(firstType)) {
                 identifierType = "invokeFromSource";
             } else {
@@ -397,7 +414,6 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
             }
 
         } else {
-            String secondType = identifierTypeMap.get(secondIdentifier);
             if (INBOUND.equals(secondType)) {
                 identifierType = "invokeToSource";
             } else {
@@ -405,23 +421,36 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
             }
         }
 
+        if (firstType != null & secondType != null && firstType.equals(PIPELINE) && secondType.equals(PIPELINE)) {
+            identifierType = "pipelineToPipeline";
+        }
+
         String pipelineName = ctx.IDENTIFIER(1).getText();
+
+        if (currentPipeline.equals(ROOTENV)) {
+            pipelineEnv.put(pipelineName, new Environment());
+            currentPipeline = pipelineName;
+        }
+
         switch (identifierType) {
         case "invokeFromSource":
-            if (insideGroup) {
-                integrationFlow.getGWConfigHolder().getGroup(groupPath).setPipeline(pipelineName);
+            if (getEnv(ROOTENV).isInsideGroup()) {
+                integrationFlow.getGWConfigHolder().getGroup(getEnv(ROOTENV).getGroupPath()).setPipeline(pipelineName);
             } else {
                 integrationFlow.getGWConfigHolder().getInboundEndpoint().setPipeline(pipelineName);
             }
 
+            getEnv(currentPipeline).getPipelineStack().push(pipelineName);
             pipelineStack.push(pipelineName);
             break;
         case "invokeFromTarget":
+            getEnv(currentPipeline).getPipelineStack().push(pipelineName);
             pipelineStack.push(pipelineName);
             break;
         case "invokeToSource":
             Mediator respondMediator = MediatorProviderRegistry.getInstance().getMediator("respond");
             dropMediatorFilterAware(respondMediator);
+            getEnv(currentPipeline).getPipelineStack().pop();
             pipelineStack.pop();
             break;
         case "invokeToTarget":
@@ -432,8 +461,60 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
 
             callMediator.setParameters(parameterHolder);
             dropMediatorFilterAware(callMediator);
+            getEnv(currentPipeline).getPipelineStack().pop();
             pipelineStack.pop();
             break;
+
+        case "pipelineToPipeline":
+            if (pipelineEnv.get(secondIdentifier) == null) {
+                Environment env = new Environment();
+                env.getPipelineStack().push(secondIdentifier);
+                pipelineEnv.put(secondIdentifier, env);
+            }
+
+            PipelineMediator pipelineInvoker = new PipelineMediator(
+                    getIntegrationFlow().getGWConfigHolder().getPipeline(ctx.IDENTIFIER(0).getText()),
+                    getIntegrationFlow().getGWConfigHolder().getPipeline(ctx.IDENTIFIER(1).getText()));
+
+            dropMediatorFilterAware(pipelineInvoker);
+
+            currentPipeline = secondIdentifier;
+
+            break;
+
+//            Stack<String> toPipeStack;
+//            if (pipelineStack.peek().equals(firstIdentifier) &&
+//                    openPipeStacks.get(secondIdentifier) != null) {
+//
+//            }
+//
+//            if (pipelineStack.peek().equals(firstIdentifier) &&
+//                    openPipeStacks.get(secondIdentifier) == null) {
+//                Stack<String> pipeStack = new Stack<String>();
+//                pipeStack.push(secondIdentifier);
+//                openPipeStacks.put(secondIdentifier, pipeStack);
+//            }
+//
+//            break;
+
+
+//            if (pipelineStack.peek().equals(firstIdentifier) &&
+//                    (openPipelines.get(secondIdentifier) != null && openPipelines.get(secondIdentifier))) {
+//                pipelineStack.pop();
+//                pipelineToPipelineStack.pop();
+//                openPipelines.remove(secondIdentifier);
+//            } else {
+//                pipelineToPipelineStack.push(pipelineStack.peek());
+//                openPipelines.put(pipelineStack.peek(), true);
+//                PipelineMediator pipelineInvoker = new PipelineMediator(
+//                        getIntegrationFlow().getGWConfigHolder().getPipeline(ctx.IDENTIFIER(0).getText()),
+//                        getIntegrationFlow().getGWConfigHolder().getPipeline(ctx.IDENTIFIER(1).getText()));
+//
+//                dropMediatorFilterAware(pipelineInvoker);
+//                pipelineStack.push(ctx.IDENTIFIER(1).getText());
+//            }
+//            break;
+
 
         default:
             break;
@@ -444,7 +525,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
 
     @Override
     public void enterGroupStatement(WUMLParser.GroupStatementContext ctx) {
-        insideGroup = true;
+        getEnv(ROOTENV).setInsideGroup(true);
         super.enterGroupStatement(ctx);
     }
 
@@ -452,7 +533,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
     public void exitGroupDefStatement(WUMLParser.GroupDefStatementContext ctx) {
         String path = StringParserUtil.getValueWithinDoubleQuotes(ctx.GROUP_PATH_DEF().getText().split("path=")[1]);
         Group group = new Group(path);
-        groupPath = path;
+        getEnv(ROOTENV).setGroupPath(path);
         group.setMethod(
                 StringParserUtil.getValueWithinDoubleQuotes(ctx.GROUP_METHOD_DEF().getText().split("method=")[1]));
 
@@ -462,7 +543,7 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
 
     @Override
     public void exitGroupStatement(WUMLParser.GroupStatementContext ctx) {
-        insideGroup = false;
+        getEnv(currentPipeline).setInsideGroup(false);
         super.exitGroupStatement(ctx);
     }
 
@@ -472,14 +553,20 @@ public class WUMLBaseListenerImpl extends WUMLBaseListener {
      */
     private void dropMediatorFilterAware(Mediator mediator) {
         // mediator.setParameters(configurations);
-        if (ifMultiThenBlockStarted) {
-            filterMediatorStack.peek().addThenMediator(mediator);
+        if (getEnv(currentPipeline).getPipelineStack().size() <= 0) {
+            getEnv(currentPipeline).getPipelineStack().push(currentPipeline);
+            pipelineStack.push(currentPipeline);
+        }
 
-        } else if (ifElseBlockStarted) {
-            filterMediatorStack.peek().addOtherwiseMediator(mediator);
+        mediator.setPipeline(getIntegrationFlow().getGWConfigHolder().getPipeline(getEnv(currentPipeline).getPipelineStack().peek()));
+        if (getEnv(currentPipeline).isIfMultiThenBlockStarted()) {
+            getEnv(currentPipeline).getFilterMediatorStack().peek().addThenMediator(mediator);
+
+        } else if (getEnv(currentPipeline).isIfElseBlockStarted()) {
+            getEnv(currentPipeline).getFilterMediatorStack().peek().addOtherwiseMediator(mediator);
 
         } else {
-            integrationFlow.getGWConfigHolder().getPipeline(pipelineStack.peek()).addMediator(mediator);
+            integrationFlow.getGWConfigHolder().getPipeline(getEnv(currentPipeline).getPipelineStack().peek()).addMediator(mediator);
         }
     }
 

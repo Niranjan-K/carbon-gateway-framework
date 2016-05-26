@@ -46,6 +46,7 @@ public class SampleCustomMediator extends AbstractMediator {
 
     @Override
     public boolean receive(CarbonMessage carbonMessage, CarbonCallback carbonCallback) throws Exception {
+        super.receive(carbonMessage, carbonCallback);
         log.info(logMessage);
         return next(carbonMessage, carbonCallback);
 

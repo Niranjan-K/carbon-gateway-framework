@@ -33,9 +33,19 @@ public abstract class AbstractMediator implements Mediator {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractMediator.class);
 
+    /* Pipeline this mediator belongs to */
+    protected Pipeline pipeline;
 
     /* Pointer for the next sibling in the pipeline*/
     Mediator nextMediator = null;
+
+    public void setPipeline(Pipeline pipeline) {
+        this.pipeline = pipeline;
+    }
+
+    public Pipeline getPipeline() {
+        return pipeline;
+    }
 
     /**
      * Check whether a sibling is present after this in the pipeline
@@ -56,7 +66,21 @@ public abstract class AbstractMediator implements Mediator {
      */
     public boolean next(CarbonMessage carbonMessage, CarbonCallback carbonCallback)
             throws Exception {
+
+        if (hasNext()) {
+            pipeline.setCurrentPosition(carbonMessage, pipeline.getCurrentPosition(carbonMessage) + 1);
+        }
+
         return hasNext() && nextMediator.receive(carbonMessage, carbonCallback);
+    }
+
+    @Override
+    public boolean receive(CarbonMessage carbonMessage, CarbonCallback carbonCallback) throws Exception {
+        //if (hasNext()) {
+        //    pipeline.setCurrentPosition(carbonMessage, pipeline.getCurrentPosition(carbonMessage) + 1);
+        //}
+
+        return true;
     }
 
     /**

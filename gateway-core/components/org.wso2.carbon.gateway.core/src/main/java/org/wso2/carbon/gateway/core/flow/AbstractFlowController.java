@@ -29,6 +29,9 @@ import org.wso2.carbon.messaging.CarbonMessage;
 public abstract class AbstractFlowController extends AbstractMediator {
 
     public boolean receive(CarbonMessage cMsg, CarbonCallback carbonCallback) throws Exception {
+        super.receive(cMsg, carbonCallback);
+//        pipeline.setCurrentPosition(cMsg, pipeline.getCurrentPosition(cMsg) + 1);
+
         VariableUtil.pushNewVariableStack(cMsg);
         return true;
     }

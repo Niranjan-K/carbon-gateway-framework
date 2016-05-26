@@ -287,4 +287,21 @@ public class VariableUtil {
         }
     }
 
+    public static Map<String, Object> getGlobalVariableMap(CarbonMessage cMsg) {
+        Stack<Map<String,Object>> varStack = getVariableStack(cMsg);
+        if (varStack.peek().containsKey(Constants.GW_GT_SCOPE)) {
+            return getGlobalMap(varStack.peek());
+        }
+
+        return varStack.peek();
+    }
+
+    private static Map<String, Object> getGlobalMap(Map<String, Object> map) {
+        if (map.containsKey(Constants.GW_GT_SCOPE)) {
+            return getGlobalMap((Map<String, Object>) map.get(Constants.GW_GT_SCOPE));
+        } else {
+            return map;
+        }
+    }
+
 }

@@ -18,15 +18,21 @@
 
 package org.wso2.carbon.gateway.outbounds.http;
 
+import com.damnhandy.uri.template.UriTemplate;
 import org.wso2.carbon.gateway.core.ServiceContextHolder;
 import org.wso2.carbon.gateway.core.config.ParameterHolder;
+import org.wso2.carbon.gateway.core.flow.templates.uri.URITemplate;
 import org.wso2.carbon.gateway.core.outbound.AbstractOutboundEndpoint;
+import org.wso2.carbon.gateway.core.util.VariableUtil;
 import org.wso2.carbon.messaging.CarbonCallback;
 import org.wso2.carbon.messaging.CarbonMessage;
 import org.wso2.carbon.messaging.Constants;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Stack;
 
 /**
  * HTTP Outbound Endpoint
@@ -44,8 +50,20 @@ public class HTTPOutboundEndpoint extends AbstractOutboundEndpoint {
     }
 
     private void processRequest(CarbonMessage cMsg) throws MalformedURLException {
+        Map<String, Object> variables = new HashMap<>();
+        if (cMsg.getProperty(org.wso2.carbon.gateway.core.Constants.VARIABLE_STACK) != null) {
+            variables = VariableUtil.getGlobalVariableMap(cMsg);
+        }
 
-        URL url = new URL(uri);
+        String expandedURI = uri;
+        try {
+            expandedURI = UriTemplate.fromTemplate(uri).set(variables).expand();
+        } catch (Exception e) {
+            //do nothing
+        }
+
+        URL url = new URL(expandedURI);
+
         String host = url.getHost();
         int port = (url.getPort() == -1) ? 80 : url.getPort();
         String urlPath = url.getPath();

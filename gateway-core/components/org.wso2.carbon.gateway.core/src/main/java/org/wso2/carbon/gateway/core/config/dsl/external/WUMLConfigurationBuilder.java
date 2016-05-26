@@ -32,6 +32,11 @@ public abstract class WUMLConfigurationBuilder {
         return new IntegrationFlow(name);
     }
 
+    public static IntegrationFlow defaultIntegrationFlow = new org.wso2.carbon.gateway.core.config.dsl.external.WUMLConfigurationBuilder.IntegrationFlow("default");
+
+    public static IntegrationFlow getDefultIntegrationFlow() {
+        return defaultIntegrationFlow;
+    }
     /**
      * ESB Configuration Builder
      */

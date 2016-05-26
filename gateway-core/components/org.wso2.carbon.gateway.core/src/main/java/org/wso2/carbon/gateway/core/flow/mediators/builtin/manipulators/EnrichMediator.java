@@ -37,6 +37,7 @@ public class EnrichMediator extends AbstractMediator {
 
     @Override
     public boolean receive(CarbonMessage carbonMessage, CarbonCallback carbonCallback) throws Exception {
+        super.receive(carbonMessage, carbonCallback);
         log.info("Message is received at Enrich mediator");
         return next(carbonMessage, carbonCallback);
     }

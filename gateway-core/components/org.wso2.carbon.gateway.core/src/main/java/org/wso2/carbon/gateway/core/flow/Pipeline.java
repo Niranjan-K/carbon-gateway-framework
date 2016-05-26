@@ -27,6 +27,9 @@ import org.wso2.carbon.gateway.core.exception.ErrorHandler;
 import org.wso2.carbon.messaging.CarbonCallback;
 import org.wso2.carbon.messaging.CarbonMessage;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * A Class representing collection of Mediators
  */
@@ -72,7 +75,12 @@ public class Pipeline {
 
             }
 
-            return mediators.getFirstMediator().receive(carbonMessage, carbonCallback);
+            if (getCurrentPosition(carbonMessage) <= mediators.getMediators().size() - 1) {
+                return mediators.getMediators().get(getCurrentPosition(carbonMessage)).receive(carbonMessage, carbonCallback);
+            } else {
+                return true;
+            }
+
         } catch (Exception e) {
             log.error("Error while mediating", e);
             return false;
@@ -94,4 +102,35 @@ public class Pipeline {
     public MediatorCollection getMediators() {
         return mediators;
     }
+
+    public int getCurrentPosition(CarbonMessage cMsg) {
+        Map<String, Integer> pipelinePositions;
+        if (cMsg.getProperty(Constants.PIPELINE_POSITION) == null) {
+            pipelinePositions = new HashMap<>();
+            pipelinePositions.put(this.name, 0);
+            cMsg.setProperty(Constants.PIPELINE_POSITION, pipelinePositions);
+            return 0;
+        } else {
+            pipelinePositions = (Map<String, Integer>) cMsg.getProperty(Constants.PIPELINE_POSITION);
+            if (pipelinePositions.get(this.name) == null) {
+                pipelinePositions.put(this.name, 0);
+                return 0;
+            } else {
+                return pipelinePositions.get(this.name);
+            }
+        }
+    }
+
+    public void setCurrentPosition(CarbonMessage cMsg, int currentPosition) {
+        Map<String, Integer> pipelinePositions;
+        if (cMsg.getProperty(Constants.PIPELINE_POSITION) == null) {
+            pipelinePositions = new HashMap<>();
+            cMsg.setProperty(Constants.PIPELINE_POSITION, pipelinePositions);
+        } else {
+            pipelinePositions = (Map<String, Integer>) cMsg.getProperty(Constants.PIPELINE_POSITION);
+        }
+
+        pipelinePositions.put(this.name, currentPosition);
+    }
+
 }

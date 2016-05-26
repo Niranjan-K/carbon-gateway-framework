@@ -47,6 +47,7 @@ public class LogMediator extends AbstractMediator {
 
     @Override
     public boolean receive(CarbonMessage carbonMessage, CarbonCallback carbonCallback) throws Exception {
+        super.receive(carbonMessage, carbonCallback);
         log.info(getValue(carbonMessage, logMessage).toString());
         return next(carbonMessage, carbonCallback);
     }

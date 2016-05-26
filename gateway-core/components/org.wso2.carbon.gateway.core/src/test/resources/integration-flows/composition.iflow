@@ -1,0 +1,44 @@
+@startuml
+
+participant StockInbound : InboundEndpoint(protocol("http"),port("8290"),context("/stock"))
+
+participant NYSEPipeline : Pipeline("NYSE_Flow")
+
+participant NASDAQPipeline : Pipeline("NASDAQ_Flow")
+
+participant HEALTHPipeline : Pipeline("Health_Flow")
+
+participant NYSEOutbound : OutboundEndpoint(protocol("http"),host("http://localhost:8290/nyse/s/{symbol}"))
+
+participant NASDAQOutbound : OutboundEndpoint(protocol("http"),host("http://localhost:8290/nasdaq/ticker/{symbol}"))
+
+group name="GetStockQuote", path="/symbol/{symbol}", method="GET"
+    StockInbound -> NYSEPipeline : "Client Request"
+    NYSEPipeline::log("Executing NYSE Pipeline")
+    NYSEPipeline -> NYSEOutbound : "Request to New York Stock Exchange"
+    NYSEOutbound -> NYSEPipeline : "StockQuotes from New York Stock Exchange"
+    NYSEPipeline::log("Response received from NYSE")
+
+    if ($header.success == true)
+	    NYSEPipeline::log("Found StockQuote in NYSE")
+	    NYSEPipeline::log("Responding to client")
+        NYSEPipeline -> StockInbound : "Response To Client"
+
+    else
+        NYSEPipeline -> NASDAQPipeline
+	    NASDAQPipeline::log("Could not find StockQuote in NYSE, checking NASDAQ")
+        NASDAQPipeline -> NASDAQOutbound : "Request to NASDAQ"
+        NASDAQOutbound -> NASDAQPipeline : "StockQuotes from NASDAQ Exchange"
+	    NASDAQPipeline::log("Response received from NASDAQ")
+	    NASDAQPipeline::log("Responding to client")
+        NASDAQPipeline -> StockInbound : "Response To Client"
+    end
+end
+
+group name="ServiceStatus", path="/health", method="GET"
+    StockInbound -> HEALTHPipeline : "Client Request"
+    HEALTHPipeline::log("Good health")
+    HEALTHPipeline -> StockInbound : "Response To Client"
+end
+
+@enduml

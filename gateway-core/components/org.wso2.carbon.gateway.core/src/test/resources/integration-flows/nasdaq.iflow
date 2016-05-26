@@ -1,0 +1,16 @@
+@startuml
+
+participant NASDAQExchangeInbound : InboundEndpoint(protocol("http"),port("8290"),context("/nasdaq"))
+
+participant NASDAQExchangePipeline : Pipeline("NASDAQ_Exchange_Flow")
+
+participant NASDAQEndpoint : OutboundEndpoint(protocol("http"),host("http://localhost:8081/stockquote/{symbol}"))
+
+group name="GetNASDAQQuote", path="/ticker/{symbol}", method="GET"
+    NASDAQExchangeInbound -> NASDAQExchangePipeline : "Client Request"
+    NASDAQExchangePipeline -> NASDAQEndpoint : "Request to NASDAQ"
+    NASDAQEndpoint -> NASDAQExchangePipeline : "Quote from NASDAQ"
+    NASDAQExchangePipeline -> NASDAQExchangeInbound
+end
+
+@enduml

@@ -1,0 +1,16 @@
+@startuml
+
+participant NYSEExchangeInbound : InboundEndpoint(protocol("http"),port("8290"),context("/nyse"))
+
+participant NYSEExchangePipeline : Pipeline("NYSE_Exchange_Flow")
+
+participant NYSEEndpoint : OutboundEndpoint(protocol("http"),host("http://localhost:8080/stockquote/{symbol}"))
+
+group name="GetNYSEQuote", path="/s/{symbol}", method="GET"
+    NYSEExchangeInbound -> NYSEExchangePipeline : "Client Request"
+    NYSEExchangePipeline -> NYSEEndpoint : "Request to NYSE"
+    NYSEEndpoint -> NYSEExchangePipeline : "Quote from NYSE"
+    NYSEExchangePipeline -> NYSEExchangeInbound
+end
+
+@enduml

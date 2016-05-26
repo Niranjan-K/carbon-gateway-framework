@@ -83,7 +83,8 @@
             org.wso2.carbon.gateway.core.config.dsl.internal.*,
             org.wso2.carbon.gateway.core.*,
             org.slf4j.*;version="${slf4j.logging.package.import.version.range}",
-            org.wso2.carbon.messaging
+            org.wso2.carbon.messaging,
+            com.damnhandy.uri.template.*;version="${dh.uri.template}"
         </import.package>
 
         <osgi.framework.import.version.range>[1.8.0, 2.0.0)</osgi.framework.import.version.range>

@@ -63,6 +63,8 @@ public class JSONtoXMLTestMediator extends AbstractMediator {
     @Override
     public boolean receive(CarbonMessage carbonMessage, CarbonCallback carbonCallback) throws Exception {
 
+        super.receive(carbonMessage, carbonCallback);
+
         CarbonMessage convertedMsg = convertTo(carbonMessage, MIMEType.XML);
 
         //CharsetDecoder decoder = Charset.forName("UTF-8").newDecoder();

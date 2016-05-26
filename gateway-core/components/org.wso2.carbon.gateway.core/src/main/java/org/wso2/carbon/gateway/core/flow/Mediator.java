@@ -28,6 +28,10 @@ import org.wso2.carbon.messaging.CarbonMessage;
  */
 public interface Mediator {
 
+    Pipeline getPipeline();
+
+    void setPipeline(Pipeline pipeline);
+
     /**
      * Get the name of the Mediator
      *
